@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="0f1732c9-ac91-4e3e-ad31-908c236c04ab" name="Changes" comment="Agregando las bibliotecas necesarias y agregando programas de prueba" />
+    <list default="true" id="0f1732c9-ac91-4e3e-ad31-908c236c04ab" name="Changes" comment="Agregando las bibliotecas necesarias y agregando programas de prueba">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/trading_ceemdan.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/trading_ceemdan.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -23,10 +27,12 @@
     &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/angel/Documentos/trading_ceemdan/trading_ceemdan&quot;
+    &quot;last_opened_file_path&quot;: &quot;/home/angel/Documentos/Proyectos-Git/trading_ceemdan&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;
   }
 }</component>
-  <component name="RunManager" selected="Python.bollinger">
+  <component name="RunManager" selected="Python.PriceSpread">
     <configuration name="PriceSpread" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -73,8 +79,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.bollinger" />
         <item itemvalue="Python.PriceSpread" />
+        <item itemvalue="Python.bollinger" />
       </list>
     </recent_temporary>
   </component>
@@ -88,6 +94,9 @@
       <updated>1650469210699</updated>
       <workItem from="1650469212992" duration="3190000" />
       <workItem from="1650478924000" duration="90000" />
+      <workItem from="1650500397684" duration="634000" />
+      <workItem from="1650508753066" duration="77000" />
+      <workItem from="1650508838162" duration="734000" />
     </task>
     <servers />
   </component>

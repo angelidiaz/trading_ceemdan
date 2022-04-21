@@ -4,23 +4,35 @@ la EMD'''
 import pandas as pd
 import numpy as np
 from pandas import read_csv
+from numpy import cumsum, log, polyfit, sqrt, std, subtract, var, seterr
+from numpy.random import randn
 import matplotlib.pyplot as plt
 from PyEMD import EMD
 from PyEMD import CEEMDAN
+import statsmodels.tsa.stattools as sts
 import statsmodels.tsa.stattools as ts
+import statsmodels.formula.api as smf
+import decimal
+import quandl
+from numpy import linalg as LA
+from arch.unitroot import VarianceRatio
+from hurst import compute_Hc
+import statsmodels.tsa.vector_ar.vecm as vm
 import datetime
 import http.client
 from alpha_vantage.timeseries import TimeSeries
 from pprint import pprint
+import matplotlib.pyplot as plt
 import statsmodels.formula.api as sm
 from numpy.matlib import repmat
 import math
+from numpy.linalg import inv, eig, cholesky as chol
 import csv
 from statsmodels.regression.linear_model import OLS
 import statsmodels.tsa.tsatools as tsat
+from statsmodels.tsa.stattools import adfuller
 import statsmodels.api as sm
 from pandas_ods_reader import read_ods
-from numpy import zeros, ones, flipud, log
 
 
 def fistdate_lastdate():
@@ -66,13 +78,174 @@ def cociente(symbol1, symbol2):
     ------
         Numpy-array
     """
-    series1 = pd.read_csv('/home/angel/Desktop/Datos/CEEMDAN/' + symbol1 +
-                          '.csv')
-    series2 = pd.read_csv('/home/angel/Desktop/Datos/CEEMDAN/' + symbol2 +
-                          '.csv')
-    residuo1 = np.array(series1[str(len(series1.columns) - 2)])
-    residuo2 = np.array(series2[str(len(series2.columns) - 2)])
+    imfs_1 = pd.read_csv('/home/angel/Desktop/Datos/CEEMDAN/' + symbol1 +
+                         '.csv')
+    imfs_2 = pd.read_csv('/home/angel/Desktop/Datos/CEEMDAN/' + symbol2 +
+                         '.csv')
+    residuo1 = np.array(imfs_1[str(len(imfs_1.columns) - 2)])
+    residuo2 = np.array(imfs_2[str(len(imfs_2.columns) - 2)])
     return residuo1 / residuo2
+
+
+def graph_of_imfs_emd(symbol):
+    """
+    Show the graphs IMFs of a stock and the graph of the stock
+
+    PARAMETER
+    ---------
+    symbol : string
+        Symbols of a stock
+
+    RETURN
+    ------
+        None
+        Show the graphs of IMFs
+    """
+    path = '/home/angel/Desktop/Datos/sp500-1day/'
+    stock = np.array(pd.read_csv(path + symbol + ".csv")['close'])
+    emd = EMD()
+    imfs = emd(stock)
+    axis_x = np.arange(len(stock))
+    plt.plot(axis_x, stock)
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.title(symbol)
+    plt.show()
+    for imf in imfs:
+        axis_x = np.arange(len(imf))
+        plt.plot(axis_x, imf)
+        plt.xlabel('x')
+        plt.ylabel('y')
+        plt.title('IMF')
+        plt.show()
+
+
+def graph_of_imfs_ceemdan(symbol):
+    """
+    Show the graphs IMFs of a stock and the graph of the stock
+
+    PARAMETER
+    ---------
+    symbol : string
+        Symbols of a stock
+
+    RETURN
+    ------
+        None
+        Show the graphs of IMFs
+    """
+    path = '/home/angel/Desktop/Datos/sp500-1day/'
+    stock = np.array(pd.read_csv(path + symbol + ".csv")['close'])
+    ceemdan = CEEMDAN()
+    c_imfs = ceemdan(stock)
+    axis_x = np.arange(len(stock))
+    plt.plot(axis_x, stock)
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.title(symbol)
+    plt.show()
+    for imf in c_imfs:
+        axis_x = np.arange(len(imf))
+        plt.plot(axis_x, imf)
+        plt.xlabel('x')
+        plt.ylabel('y')
+        plt.title('IMF')
+        plt.show()
+
+
+def hurst_exponent_adftest(symbol):
+    """
+    print the hurst exponent, variance-test ratio
+    and the half life of a stock
+
+    PARAMETER
+    ---------
+    symbol : string
+        Symbols of a stock
+
+    RETURN
+    ------
+        None
+        print the hurst exponent
+    """
+    path = '/home/angel/Desktop/Datos/sp500-1day/'
+    stock = np.array(pd.read_csv(path + symbol + ".csv")['close'])
+    stock = pd.DataFrame(stock)
+    X = stock.Value
+    Y = sts.adfuller(stock, maxlag=1)
+
+    # test ADF con sus valores criticos
+    print('test estadístico ADF : %f' % Y[0])
+    print('Valores criticos:')
+    for key, value in Y[4].items():
+        print('\t%s: %.3f' % (key, value))
+
+    # Exponente de Hurst
+    H, c, data = compute_Hc(stock, kind='change', simplified=True)
+    print('Exponente de Hurst:' "{:.4f}".format(H))
+
+    # test de ratio de varianza
+    vr = VarianceRatio(log(stock))
+
+    print(vr.summary().as_text())
+
+    # Vida media
+    stock['Value_lagged'] = stock['Value'].shift(1)
+    stock['delta'] = stock['Value'] - stock['Value_lagged']
+
+    results = smf.ols('delta ~ Value_lagged', data=stock).fit()
+    lam = results.params['Value_lagged']
+
+    halflife = -np.log(2) / lam
+    print('la vida media es de %f dias' % halflife)
+
+
+def cadftest(series1, series2, flag=False):
+    """
+    Return the cadf test of two series and print crtical values
+    if flag is True
+
+    PARAMETER
+    ---------
+    series1 : numpy array
+        series of stock 1
+
+    series2 : numpy array
+        series of stock 2
+
+    RETURN
+    ------
+        p-values of the cadf test
+        Show the graphs of IMFs
+    """
+    series1 = pd.Series(series1)
+    series2 = pd.Series(series2)
+    coint_t, pvalue, crit_value = ts.coint(series1, series2)
+    if flag:
+        print('t-statistic = %f' % coint_t)
+        print('pvalue = %f' % pvalue)
+        print('valores criticos del test CADF')
+        print(crit_value)
+    return coint_t
+
+
+def range_std_of_cociente(symbol1, symbol2):
+    series = cociente(symbol1, symbol2)
+    imf_1 = pd.read_csv('/home/angel/Desktop/Datos/CEEMDAN/' + symbol1 +
+                        '.csv')
+    imf_2 = pd.read_csv('/home/angel/Desktop/Datos/CEEMDAN/' + symbol2 +
+                        '.csv')
+    residuo_1 = np.array(imf_1[str(len(imf_1.columns) - 2)])
+    residuo_2 = np.array(imf_2[str(len(imf_2.columns) - 2)])
+    return [
+        max(list(series)) - min(list(series)),
+        np.std((residuo_1 / LA.norm(residuo_1)) /
+               (residuo_2 / LA.norm(residuo_2))),
+        np.std((residuo_1 / sum(list(residuo_1))) /
+               (residuo_2 / sum(list(residuo_2)))),
+        np.std((residuo_1 / max(list(residuo_1))) /
+               (residuo_2 / max(list(residuo_2))))
+    ]
 
 
 def new_strategy(symbol1, symbol2):
@@ -125,7 +298,7 @@ def new_strategy(symbol1, symbol2):
     return df, df1, df2
 
 
-def price_spread(symbol1, symbol2, opc):
+def price_spread(symbol1, symbol2, opc, flag=False):
     """
     Return 2 APRs.[Spanish version] Se aplican las estrategias de Trading Pairs
     usando los price spread y log price spread a las series de tiempo S1 y S2
@@ -222,6 +395,12 @@ def price_spread(symbol1, symbol2, opc):
     # print('\nEl valor del APR es:' + str(APR))
     sharpe = (np.sqrt(252) * np.mean(ret)) / np.std(ret)
 
+    if flag:
+        plt.figure()
+        yport.plot(x='timestamp', y=yport.values)
+        plt.title('Price spread' + symbol1 + "-" + symbol2)
+        plt.show()
+
     ## ESTRATEGIA PARA EL SPREAD DE LOS LOG PRECIOS ##
 
     hedgeratio = np.ones(
@@ -273,10 +452,16 @@ def price_spread(symbol1, symbol2, opc):
     # print('\nEl valor del APR es:' + str(APR))
     sharpe = (np.sqrt(252) * np.mean(ret)) / np.std(ret)
 
+    if flag:
+        plt.figure()
+        yport.plot(x='timestamp', y=yport.values)
+        plt.title('Log price spread' + symbol1 + "-" + symbol2)
+        plt.show()
+
     return [APR1, APR2]
 
 
-def bollinger_bands(symbol1, symbol2, opc):
+def bollinger_bands(symbol1, symbol2, opc, flag=False):
     """
     Return 2 APRs.[Spanish version] Se aplican las estrategias bandas
     de bollinger a las series de tiempo S1 y S2 correspondientes a los simbolos
@@ -398,4 +583,11 @@ def bollinger_bands(symbol1, symbol2, opc):
 
     # SE CALCULA EL APR Y LA RAZON DE SHARPE
     APR = np.prod(1 + ret)**(252 / len(ret)) - 1
+
+    if flag:
+        plt.figure()
+        yport.plot(x='timestamp', y=yport.values)
+        plt.title('Bollinguer bandas' + symbol1 + "-" + symbol2)
+        plt.show()
+
     return APR

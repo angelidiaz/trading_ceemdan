@@ -1,5 +1,7 @@
-'''Pruebas de estrategias de pares utilizando
-la EMD'''
+#! ./venv/bin/python3.8
+# -*- coding: utf-8 -*-
+
+'''Pairs Trading Strategies using the CEEMDAN'''
 
 import pandas as pd
 import numpy as np

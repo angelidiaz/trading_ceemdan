@@ -35,81 +35,26 @@ import statsmodels.api as sm
 from pandas_ods_reader import read_ods
 
 
-def fistdate_lastdate():
+def graph_of_imfs(series, imfs=[]):
     """
-    Return the minimal first date and the maximal last
-    of all 100 first series of S&P500
+    Shows the graphs of IMFs, one by one, of the series and the graph of the series too.
 
     PARAMETER
     ---------
-    None
+    series : numpy-array
 
-    RETURN
-    ------
-        A 2-tuple with both dates.
-    """
-    path = '/home/angel/Desktop/Datos/sp500-1day/'
-    symbols = pd.read_csv(path + "sp500_symbols.csv")
-    symbols = symbols['symbol'][:100]
-    first_dates = []
-    last_dates = []
-    for symbol in symbols:
-        if symbol not in ['BF B', 'OGN', 'VTRS', 'CARR', 'OTIS']:
-            dates = np.array(pd.read_csv(path + symbol + ".csv")["date"])
-            first_dates.append(min(dates))
-            last_dates.append(max(dates))
-    return max(first_dates), min(last_dates)
-
-
-def cociente(symbol1, symbol2):
-    """
-    Return the quotient of the residue of series of symbol1
-    divided by the residue of series of symbol2
-
-    PARAMETER
-    ---------
-    symbol1 : string
-        a symbol of S&P500
-
-    symbol2 : string
-        another symbol os S&P500
-
-    RETURN
-    ------
-        Numpy-array
-    """
-    imfs_1 = pd.read_csv('/home/angel/Desktop/Datos/CEEMDAN/' + symbol1 +
-                         '.csv')
-    imfs_2 = pd.read_csv('/home/angel/Desktop/Datos/CEEMDAN/' + symbol2 +
-                         '.csv')
-    residuo1 = np.array(imfs_1[str(len(imfs_1.columns) - 2)])
-    residuo2 = np.array(imfs_2[str(len(imfs_2.columns) - 2)])
-    return residuo1 / residuo2
-
-
-def graph_of_imfs_emd(symbol):
-    """
-    Show the graphs IMFs of a stock and the graph of the stock
-
-    PARAMETER
-    ---------
-    symbol : string
-        Symbols of a stock
+    imfs : numpy-array
+          The IMFs of the series
 
     RETURN
     ------
         None
         Show the graphs of IMFs
     """
-    path = '/home/angel/Desktop/Datos/sp500-1day/'
-    stock = np.array(pd.read_csv(path + symbol + ".csv")['close'])
-    emd = EMD()
-    imfs = emd(stock)
-    axis_x = np.arange(len(stock))
-    plt.plot(axis_x, stock)
+    axis_x = np.arange(len(series))
+    plt.plot(axis_x, series)
     plt.xlabel('x')
     plt.ylabel('y')
-    plt.title(symbol)
     plt.show()
     for imf in imfs:
         axis_x = np.arange(len(imf))
@@ -120,59 +65,23 @@ def graph_of_imfs_emd(symbol):
         plt.show()
 
 
-def graph_of_imfs_ceemdan(symbol):
+def hurst_exponent_adftest(series):
     """
-    Show the graphs IMFs of a stock and the graph of the stock
+    Prints the hurst exponent, variance-test ratio
+    and the half life of a time series
 
     PARAMETER
     ---------
-    symbol : string
-        Symbols of a stock
-
-    RETURN
-    ------
-        None
-        Show the graphs of IMFs
-    """
-    path = '/home/angel/Desktop/Datos/sp500-1day/'
-    stock = np.array(pd.read_csv(path + symbol + ".csv")['close'])
-    ceemdan = CEEMDAN()
-    c_imfs = ceemdan(stock)
-    axis_x = np.arange(len(stock))
-    plt.plot(axis_x, stock)
-    plt.xlabel('x')
-    plt.ylabel('y')
-    plt.title(symbol)
-    plt.show()
-    for imf in c_imfs:
-        axis_x = np.arange(len(imf))
-        plt.plot(axis_x, imf)
-        plt.xlabel('x')
-        plt.ylabel('y')
-        plt.title('IMF')
-        plt.show()
-
-
-def hurst_exponent_adftest(symbol):
-    """
-    print the hurst exponent, variance-test ratio
-    and the half life of a stock
-
-    PARAMETER
-    ---------
-    symbol : string
-        Symbols of a stock
+    series : numpy-array
 
     RETURN
     ------
         None
         print the hurst exponent
     """
-    path = '/home/angel/Desktop/Datos/sp500-1day/'
-    stock = np.array(pd.read_csv(path + symbol + ".csv")['close'])
-    stock = pd.DataFrame(stock)
-    X = stock.Value
-    Y = sts.adfuller(stock, maxlag=1)
+    series = pd.DataFrame(series)
+    X = series.Value
+    Y = sts.adfuller(series, maxlag=1)
 
     # test ADF con sus valores criticos
     print('test estadístico ADF : %f' % Y[0])
@@ -181,19 +90,19 @@ def hurst_exponent_adftest(symbol):
         print('\t%s: %.3f' % (key, value))
 
     # Exponente de Hurst
-    H, c, data = compute_Hc(stock, kind='change', simplified=True)
+    H, c, data = compute_Hc(series, kind='change', simplified=True)
     print('Exponente de Hurst:' "{:.4f}".format(H))
 
     # test de ratio de varianza
-    vr = VarianceRatio(log(stock))
+    vr = VarianceRatio(log(series))
 
     print(vr.summary().as_text())
 
     # Vida media
-    stock['Value_lagged'] = stock['Value'].shift(1)
-    stock['delta'] = stock['Value'] - stock['Value_lagged']
+    series['Value_lagged'] = series['Value'].shift(1)
+    series['delta'] = series['Value'] - series['Value_lagged']
 
-    results = smf.ols('delta ~ Value_lagged', data=stock).fit()
+    results = smf.ols('delta ~ Value_lagged', data=series).fit()
     lam = results.params['Value_lagged']
 
     halflife = -np.log(2) / lam
@@ -202,21 +111,18 @@ def hurst_exponent_adftest(symbol):
 
 def cadftest(series1, series2, flag=False):
     """
-    Return the cadf test of two series and print crtical values
+    Return the CADF test of two series and print critical values
     if flag is True
 
     PARAMETER
     ---------
     series1 : numpy array
-        series of stock 1
 
     series2 : numpy array
-        series of stock 2
 
     RETURN
     ------
-        p-values of the cadf test
-        Show the graphs of IMFs
+        p-values of the CADF test.
     """
     series1 = pd.Series(series1)
     series2 = pd.Series(series2)
@@ -229,123 +135,64 @@ def cadftest(series1, series2, flag=False):
     return coint_t
 
 
-def range_std_of_cociente(symbol1, symbol2):
-    series = cociente(symbol1, symbol2)
-    imf_1 = pd.read_csv('/home/angel/Desktop/Datos/CEEMDAN/' + symbol1 +
-                        '.csv')
-    imf_2 = pd.read_csv('/home/angel/Desktop/Datos/CEEMDAN/' + symbol2 +
-                        '.csv')
-    residuo_1 = np.array(imf_1[str(len(imf_1.columns) - 2)])
-    residuo_2 = np.array(imf_2[str(len(imf_2.columns) - 2)])
+def amplitude_and_std_of_quotient(residue1, residue2):
+    """
+    Return the amplitude of the quotient residue1/residue2 and the Standard Deviation of the quotient
+    residue1/residue2, (r2*residue1)/(r1*residue2) where r1 and r2 are the norm of residue1 and residue2, respectively,
+    using the supreme norm, euclidean norm and L1-norm.
+
+    PARAMETER
+    ---------
+    residue1 : numpy array
+
+    residue2 : numpy array
+
+    RETURN
+    ------
+        A list with the amplitude and the STDs.
+    """
+    quotient = residue1/residue2
     return [
-        max(list(series)) - min(list(series)),
-        np.std((residuo_1 / LA.norm(residuo_1)) /
-               (residuo_2 / LA.norm(residuo_2))),
-        np.std((residuo_1 / sum(list(residuo_1))) /
-               (residuo_2 / sum(list(residuo_2)))),
-        np.std((residuo_1 / max(list(residuo_1))) /
-               (residuo_2 / max(list(residuo_2))))
+        max(list(quotient)) - min(list(quotient)),
+        np.std((residue1 / LA.norm(residue1)) /
+               (residue2 / LA.norm(residue2))),
+        np.std((residue1 / sum(list(residue1))) /
+               (residue2 / sum(list(residue2)))),
+        np.std((residue1 / max(list(residue1))) /
+               (residue2 / max(list(residue2))))
     ]
 
 
-def new_strategy(symbol1, symbol2):
+def price_spread(df, df0, df1, flag=False):
     """
-    Return 3 DataFrames:
-    1. df: df[symbol1] is the series asociated to the symbol1
-           df[symbol2] is the series asociated to the symbol2
-           times the quotients of theirs residues.
-    2. df1 has two residues of the 2 stocks asociated to both symbols
-    3. df2 has two time series of the stocks asociated to both symbols
+    Trading Pairs Strategy using Price Spreads. For more information on this strategy, read:
+    Chan, E. (2013). Algorithmic trading: winning strategies and their rationale (Vol. 625). John Wiley
+    & Sons, chapter 3.
 
     PARAMETER
     ---------
-    symbol1 : string
-        a symbol of S&P500
+    df : pandas.DataFrame
+        A DataFrame containing the original time series of two stocks.
 
-    symbol2 : string
-        another symbol os S&P500
+    df0 : pandas.DataFrame
+        A DataFrame containing two time series that are derivative from series of the DataFrame df. They will be used
+        to compute the hedge ratio.
 
-    RETURN
-    ------
-        DataFrame
-    """
-    path = '/home/angel/Desktop/Datos/sp500-1day/'
-    first_date, last_date = fistdate_lastdate()
-    stock1 = pd.read_csv(path + symbol1 + ".csv")
-    stock2 = pd.read_csv(path + symbol2 + ".csv")
-    stock1 = np.array(stock1['close'][np.where(
-        np.array(stock1['date']) == first_date)[0][0]:np.where(
-            np.array(stock1['date']) == last_date)[0][0]])
-    stock2 = np.array(stock2['close'][np.where(
-        np.array(stock2['date']) == first_date)[0][0]:np.where(
-            np.array(stock2['date']) == last_date)[0][0]])
-    beta = cociente(symbol1, symbol2)
-    imfs_of_stock1 = pd.read_csv('/home/angel/Desktop/Datos/CEEMDAN/' +
-                                 symbol1 + '.csv')
-    imfs_of_stock2 = pd.read_csv('/home/angel/Desktop/Datos/CEEMDAN/' +
-                                 symbol2 + '.csv')
-    residuo1 = np.array(imfs_of_stock1[str(len(imfs_of_stock1.columns) - 2)])
-    residuo2 = np.array(imfs_of_stock2[str(len(imfs_of_stock2.columns) - 2)])
-    df = pd.DataFrame()
-    df1 = pd.DataFrame()
-    df2 = pd.DataFrame()
-    df[symbol1] = stock1
-    df[symbol2] = beta * stock2
-    df1[symbol1] = residuo1
-    df1[symbol2] = residuo2
-    df2[symbol1] = stock1
-    df2[symbol2] = stock2
-    return df, df1, df2
+    df1 : pandas.DataFrame
+        A DataFrame containing two time series that are derivative from series of the DataFrame df. They will be used
+        to compute the spreads of the strategy.
 
-
-def price_spread(symbol1, symbol2, opc, flag=False):
-    """
-    Return 2 APRs.[Spanish version] Se aplican las estrategias de Trading Pairs
-    usando los price spread y log price spread a las series de tiempo S1 y S2
-    correspondientes a los simbolos symbol1 y symbol2 del S&P500. opc
-    representa las siguientes opciones:
-
-    opc = 1: La estrategia se aplica a S1 y S2 sin ninguna modificación
-    de la estrategia original.
-
-    opc = 2: Se aplica la estrategia al par (S1, S2) y al calcular dinamicamen-
-    los spreads se utiliza unicamente los residuos.
-
-    opc = 3: Se calcula el cociente de los residuos de S1 y S2 (llamado r)
-    y aplicamos la estragia a S1 y S2. Al calcular los spreads y las
-    posiciones utilizamos el par (S1, r*S2).
-
-    opc = 4: Se aplica la estrategia a S1 y S2. Para calcular los spreads
-    se utilizan unicamente los residuos y para calcular las posiciones
-    se utiliza el par (S1, r*S2).
-
-    PARAMETER
-    ---------
-    symbol1 : string
-        a symbol of S&P500
-
-    symbol2 : string
-        another symbol os S&P500
+    flag : boolean
+        If flag == True, it shows the graph of spreads.
 
     RETURN
     ------
-        a 2-tuple
+        APR and Sharpe ratio
     """
+    symbol1 = list(df)[0]
+    symbol2 = list(df)[1]
 
     lookback = 20
-    df, df1, df2 = new_strategy(symbol1, symbol2)
-    if opc == 1:
-        df_0 = df_1 = df_2 = df2
-    if opc == 2:
-        df_0 = df1
-        df_1 = df_2 = df2
-    if opc == 3:
-        df_0 = df_1 = df
-        df_2 = df2
-    if opc == 4:
-        df_0 = df1
-        df_1 = df
-        df_2 = df2
 
     ### ESTRATEGIA PARA EL SPREAD DE LOS PRECIOS ###
 
@@ -355,13 +202,13 @@ def price_spread(symbol1, symbol2, opc, flag=False):
     # CALCULO DE LA RAZON DE HEDGE DINAMICAMENTE
     for i in range(lookback, len(df)):
         resultado_regresion = sm.OLS(
-            df_0[symbol2][i - lookback + 1:i + 1],
-            sm.add_constant(df_0[symbol1][i - lookback + 1:i + 1])).fit()
+            df0[symbol2][i - lookback + 1:i + 1],
+            sm.add_constant(df0[symbol1][i - lookback + 1:i + 1])).fit()
         hedgeratio[i] = resultado_regresion.params[1]
 
     # SE CALCULAN LOS SPREADS
     AA = sm.add_constant(-hedgeratio, prepend=False)
-    yport = AA * df_1
+    yport = AA * df1
     yport = np.sum(yport, 1)
 
     moving_mean = yport.rolling(lookback).mean()
@@ -373,10 +220,10 @@ def price_spread(symbol1, symbol2, opc, flag=False):
 
     # SE CALCULA EL NUMERO DE UNIDADES INVERTIDAS EN DOLARES
     position = sm.add_constant(-hedgeratio, prepend=False) * repmat(
-        numunits, 1, 2) * df_2
+        numunits, 1, 2) * df
 
     # SE CALCULAN LAS UTILIDADES Y PERDIDAS
-    pnl = (position.shift(1) * df_2.diff(1)) / df_2.shift(1)
+    pnl = (position.shift(1) * df.diff(1)) / df.shift(1)
     pnl = pnl.fillna(value=0)
     pnl = np.sum(pnl, 1)
 
@@ -391,7 +238,7 @@ def price_spread(symbol1, symbol2, opc, flag=False):
     ret = ret.fillna(value=0)
 
     # RAZON DE SHARPE Y APR
-    APR1 = np.prod(1 + ret)**(252 / len(ret)) - 1
+    APR = np.prod(1 + ret) ** (252 / len(ret)) - 1
     # print('\nEl valor del APR es:' + str(APR))
     sharpe = (np.sqrt(252) * np.mean(ret)) / np.std(ret)
 
@@ -400,6 +247,42 @@ def price_spread(symbol1, symbol2, opc, flag=False):
         yport.plot(x='timestamp', y=yport.values)
         plt.title('Price spread' + symbol1 + "-" + symbol2)
         plt.show()
+
+    return APR, sharpe
+
+
+def price_spread_log(df, df0, df1, flag=False):
+    """
+    Trading Pairs Strategy using Log Price Spreads. For more information on this strategy, read:
+    Chan, E. (2013). Algorithmic trading: winning strategies and their rationale (Vol. 625). John Wiley
+    & Sons, chapter 3.
+
+    PARAMETER
+    ---------
+    df : pandas.DataFrame
+        A DataFrame containing the original time series of two stocks.
+
+    df0 : pandas.DataFrame
+        A DataFrame containing two time series that are derivative from series of the DataFrame df. They will be used
+        to compute the hedge ratio.
+
+    df1 : pandas.DataFrame
+        A DataFrame containing two time series that are derivative from series of the DataFrame df. They will be used
+        to compute the spreads of the strategy.
+
+    flag : boolean
+        If flag == True, it shows the graph of spreads.
+
+    RETURN
+    ------
+        APR and Sharpe ratio
+
+    """
+
+    symbol1 = list(df)[0]
+    symbol2 = list(df)[1]
+
+    lookback = 20
 
     ## ESTRATEGIA PARA EL SPREAD DE LOS LOG PRECIOS ##
 
@@ -410,14 +293,14 @@ def price_spread(symbol1, symbol2, opc, flag=False):
     # CALCULO DE LA RAZON DE HEDGE DINAMICAMENTE
     for i in range(lookback, len(df)):
         res = sm.OLS(
-            df_0.apply(log)[symbol2][i - lookback + 1:i + 1],
-            sm.add_constant(df_0.apply(log)[symbol1][i - lookback + 1:i +
-                                                     1])).fit()
+            df0.apply(log)[symbol2][i - lookback + 1:i + 1],
+            sm.add_constant(df0.apply(log)[symbol1][i - lookback + 1:i +
+                                                                     1])).fit()
         hedgeratio[i] = res.params[1]
 
     # SE CALCULAN LOS SPREADS
     AA = sm.add_constant(-hedgeratio, prepend=False)
-    yport = AA * df_1.apply(log)
+    yport = AA * df1.apply(log)
     yport = np.sum(yport, 1)
     hedgeratio[0:20] = np.zeros((20, 1))
     yport[0:20] = np.zeros(20)
@@ -430,10 +313,10 @@ def price_spread(symbol1, symbol2, opc, flag=False):
     numunits = pd.DataFrame(z_score * -1, columns=['numunits'])
 
     position = sm.add_constant(-hedgeratio, prepend=False) * repmat(
-        numunits, 1, 2) * df_2
+        numunits, 1, 2) * df
 
     # SE CALCULAN LAS UTILIDADES Y PERDIDAS
-    pnl = (position.shift(1) * df_2.diff(1)) / df_2.shift(1)
+    pnl = (position.shift(1) * df.diff(1)) / df.shift(1)
     pnl = pnl.fillna(value=0)
     pnl = np.sum(pnl, 1)
 
@@ -448,7 +331,7 @@ def price_spread(symbol1, symbol2, opc, flag=False):
     ret = ret.fillna(value=0)
 
     # RAZON DE SHARPE Y APR
-    APR2 = np.prod(1 + ret)**(252 / len(ret)) - 1
+    APR = np.prod(1 + ret) ** (252 / len(ret)) - 1
     # print('\nEl valor del APR es:' + str(APR))
     sharpe = (np.sqrt(252) * np.mean(ret)) / np.std(ret)
 
@@ -458,57 +341,40 @@ def price_spread(symbol1, symbol2, opc, flag=False):
         plt.title('Log price spread' + symbol1 + "-" + symbol2)
         plt.show()
 
-    return [APR1, APR2]
+    return APR, sharpe
 
 
-def bollinger_bands(symbol1, symbol2, opc, flag=False):
+def bollinger_bands(df, df0, df1, flag=False):
     """
-    Return 2 APRs.[Spanish version] Se aplican las estrategias bandas
-    de bollinger a las series de tiempo S1 y S2 correspondientes a los simbolos
-    symbol1 y symbol2 del S&P500. opc representa las siguientes opciones:
-
-    opc = 1: La estrategia se aplica a S1 y S2 sin ninguna modificación
-    de la estrategia original.
-
-    opc = 2: Se aplica la estrategia al par (S1, S2) y al calcular dinamicamen-
-    los spreads se utiliza unicamente los residuos.
-
-    opc = 3: Se calcula el cociente de los residuos de S1 y S2 (llamado r)
-    y aplicamos la estragia a S1 y S2. Al calcular los spreads y las
-    posiciones utilizamos el par (S1, r*S2).
-
-    opc = 4: Se aplica la estrategia a S1 y S2. Para calcular los spreads
-    se utilizan unicamente los residuos y para calcular las posiciones
-    se utiliza el par (S1, r*S2).
-
+    Trading Pairs Strategy using Bollinger Bands. For more information on this strategy, read:
+    Chan, E. (2013). Algorithmic trading: winning strategies and their rationale (Vol. 625). John Wiley
+    & Sons, chapter 3.
 
     PARAMETER
     ---------
-    symbol1 : string
-        a symbol of S&P500
+    df : pandas.DataFrame
+        A DataFrame containing the original time series of two stocks.
 
-    symbol2 : string
-        another symbol of S&P500
+    df0 : pandas.DataFrame
+        A DataFrame containing two time series that are derivative from series of the DataFrame df. They will be used
+        to compute the hedge ratio.
+
+    df1 : pandas.DataFrame
+        A DataFrame containing two time series that are derivative from series of the DataFrame df. They will be used
+        to compute the spreads of the strategy.
+
+    flag : boolean
+        If flag == True, it shows the graph of spreads.
 
     RETURN
     ------
-        a float
+        APR and Sharpe ratio
     """
 
+    symbol1 = list(df)[0]
+    symbol2 = list(df)[1]
+
     lookback = 20
-    df, df1, df2 = new_strategy(symbol1, symbol2)
-    if opc == 1:
-        df_0 = df_1 = df_2 = df2
-    if opc == 2:
-        df_0 = df1
-        df_1 = df_2 = df2
-    if opc == 3:
-        df_0 = df_1 = df
-        df_2 = df2
-    if opc == 4:
-        df_0 = df1
-        df_1 = df
-        df_2 = df2
 
     # ESTRATEGIA PARA EL SPREAD DE LOS PRECIOS
 
@@ -521,13 +387,13 @@ def bollinger_bands(symbol1, symbol2, opc, flag=False):
     # CALCULO DE LA RAZON DE HEDGE DINAMICAMENTE
     for i in range(lookback, len(df)):
         resultado_regresion = sm.OLS(
-            df_0[symbol2][i - lookback + 1:i + 1],
-            sm.add_constant(df_0[symbol1][i - lookback + 1:i + 1])).fit()
+            df0[symbol2][i - lookback + 1:i + 1],
+            sm.add_constant(df0[symbol1][i - lookback + 1:i + 1])).fit()
         hedgeratio[i] = resultado_regresion.params[1]
 
     # SE CALCULAN LOS SPREADS
     AA = sm.add_constant(-hedgeratio, prepend=False)
-    yport = AA * df_1
+    yport = AA * df1
     yport = np.sum(yport, 1)
 
     moving_mean = yport.rolling(lookback).mean()
@@ -564,10 +430,10 @@ def bollinger_bands(symbol1, symbol2, opc, flag=False):
     # SE CALCULAN LAS POSICIONES
     CC = np.transpose(repmat(numUnits, 2, 1))
     BB = sm.add_constant(-hedgeratio, prepend=False)
-    position = BB * CC * df_2
+    position = BB * CC * df
 
     # SE CALCULA LAS UTILIDADES Y PERDIDAS DIARIAS
-    pnl = (position.shift(1) * df_2.diff(1)) / df_2.shift(1)
+    pnl = (position.shift(1) * df.diff(1)) / df.shift(1)
     pnl = pnl.fillna(value=0)
     pnl = np.sum(pnl, 1)
 
@@ -582,7 +448,8 @@ def bollinger_bands(symbol1, symbol2, opc, flag=False):
     ret = ret.fillna(value=0)
 
     # SE CALCULA EL APR Y LA RAZON DE SHARPE
-    APR = np.prod(1 + ret)**(252 / len(ret)) - 1
+    APR = np.prod(1 + ret) ** (252 / len(ret)) - 1
+    sharpe = (np.sqrt(252) * np.mean(ret)) / np.std(ret)
 
     if flag:
         plt.figure()
@@ -590,4 +457,92 @@ def bollinger_bands(symbol1, symbol2, opc, flag=False):
         plt.title('Bollinguer bandas' + symbol1 + "-" + symbol2)
         plt.show()
 
-    return APR
+    return APR, sharpe
+
+
+def new_strategies(df, df_residues):
+    """
+    4 trading strategies using the CEEMDAN are applied to the Traditional Pairs Trading strategies, described on this
+    reference: Chan, E. (2013). Algorithmic trading: winning strategies and their rationale (Vol. 625). John Wiley
+    & Sons, chapter 3.
+    The strategies are:
+
+    Strategy 1: We apply the traditional strategy to time series S1 and S2 in the DataFrame df.
+
+    Strategy 2: We apply the traditional strategy to time series S1 and S2 in the DataFrame df. To compute the
+    hedge ratios, we use the residues r1 and r2 in the DataFrame df_residues, which correspond to the gotten
+    residues applying the CEEMDAN to series S1 and S2, respectively.
+
+    Strategy 3: We apply the traditional strategy to time series S1 and S2 in the DataFrame df. To compute the
+    hedge ratios and the spreads, we make a new time series S3 = q*S2, where q = r1/r2 and where r1 and r2 in
+    the DataFrame df_residues, which correspond to the gotten residues applying the CEEMDAN to series S1 and S2,
+    respectively. We use the time series S1 and S3 to calculate the hedge ratios and the spreads.
+
+    Strategy 4: We apply the traditional strategy to time series S1 and S2 in the DataFrame df. To compute the
+    hedge ratios, we use the residues r1 and r2 in the DataFrame df_residues, which correspond to the gotten
+    residues applying the CEEMDAN to series S1 and S2 respectively. To compute the spreads, we make a new time
+    series S3 = q*S2, where q = r1/r2; we use the time series S1 and S3 to calculate the spreads.
+
+    PARAMETER
+    ---------
+    df : pandas.DataFrame
+        a DataFrame containing two time series.
+
+    df_residues: pandas.DataFrame
+        a DataFrame containing the gotten residues applying CEEMDAN to the time series in df.
+
+    RETURN
+    ------
+        a DataFrame containing the APR and ratio sharpe of each strategy.
+    """
+
+    symbol1 = list(df)[0]
+    symbol2 = list(df)[1]
+
+    residue1 = np.array(df_residues[symbol1])
+    residue2 = np.array(df_residues[symbol2])
+
+    series1 = np.array(df[symbol1])
+    series2 = np.array(df[symbol2])
+
+    quotient = residue1 / residue2
+
+    df0 = pd.DataFrame()
+    df0[symbol1] = series1
+    df0[symbol2] = quotient * series2
+
+    strategies = [(df, df, df), (df, df_residues, df),
+                  (df, df0, df0), (df, df_residues, df0)]
+
+    results = pd.DataFrame()
+    cont = 1
+
+    for strategy in strategies:
+        results[f"strategy {cont}"] = [price_spread(strategy[0], strategy[1], strategy[2]),
+                                       price_spread_log(strategy[0], strategy[1], strategy[2]),
+                                       bollinger_bands(strategy[0], strategy[1], strategy[2])]
+        cont += 1
+    results.index = ['Price Spread', 'Log Price Spread', 'Bollinger Bands']
+
+    return results
+
+
+if __name__ == "__main__":
+    series1 = pd.read_csv("AAPL.csv")['close']
+    series1_imfs = pd.read_csv("AAPL_imf.csv")
+    residue1 = series1_imfs[list(series1_imfs)[len(list(series1_imfs)) - 1]]
+    series2 = pd.read_csv("TSLA.csv")['close']
+    series2_imfs = pd.read_csv("AAPL_imf.csv")
+    residue2 = series2_imfs[list(series2_imfs)[len(list(series2_imfs)) - 1]]
+
+    df = pd.DataFrame()
+    df_residues = pd.DataFrame()
+    df['AAPL'] = series1
+    df['TSLA'] = series2
+    df_residues['AAPL'] = residue1
+    df_residues['TSLA'] = residue2
+
+    results = new_strategies(df, df_residues)
+
+    print(results)
+

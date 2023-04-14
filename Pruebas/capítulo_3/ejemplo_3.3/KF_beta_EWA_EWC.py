@@ -32,19 +32,19 @@ e = np.ones(s)*float('nan')
 # MEDIDAS DE PREDICCION DE LA VARIANZA DEL ERROR
 Q = np.ones(s)*float('nan')
 # pARA ACLARAR, SE DENOTA R(T|T) POR P(T). SE INICIALIZA R,P Y BETA
-R = np.zeros((2,2))
-P = np.zeros((2,2))
+R = np.zeros((2,2)) # R(t+1|t)
+P = np.zeros((2,2)) # R(t|t)
 r = (2,len(df))
-beta = np.zeros(r)*float('nan')
-Vw = 0.00010001*np.identity(2)
+beta = np.zeros(r)*float('nan') # beta(t+1|t)
+beta_t = np.zeros(r)*float('nan') # beta(t|t)
+Vw = (delta/ (1 -delta))*np.identity(2)
 Ve = 0.001
 
 # SE INICIALIZA BETA[:,0] CON VALORES 0
-beta[:,2]=0
 beta[:,0] = 0
 # DADOS VALORES INICIALES DE BETA Y R (Y P) 
 for i in range(len(df)):
-	if i>0:
+	if i > 0:
 		beta[:,i] = beta[:,i-1]# ESTADO DE PREDICCION
 		R = P+Vw# ESTADO DE PREDICCION COVARIANZA
 	yhat[i] = np.matmul(x.values[i,:],beta[:,i])# MEDIDA DE PREDICCION
@@ -52,8 +52,11 @@ for i in range(len(df)):
 	e[i] = df['EWC'][i]-yhat[i]# MEDIDA DE PREDICCION DEL ERROR
 	K = np.matmul(R,np.transpose(x.values[i,:]))/Q[i] #GANANCIA KALMAN
 	beta[:,i] = beta[:,i]+K*e[i]#ACTUALIZACION ESTADO
-	P = R-np.matmul(mulmat(K,x.values[i,:]),R)#ACTUALIZACION ESTADO COVARIANZA
+	K_aux = K.reshape(2,1)
+	x_aux = x.values[i,:].reshape(1,2)
+	P = R-np.matmul(np.matmul(K_aux,x_aux),R)#ACTUALIZACION ESTADO COVARIANZA
 
+print(beta)
 # GRAFICA ESTIMACION MEDIANTE EL FILTRO DE KALMAN DE LA PENDIENTE ENTRE EWC Y EWA
 plt.figure()
 plt.plot(beta[0,:])

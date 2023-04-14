@@ -14,6 +14,7 @@ from numpy.matlib import repmat
 df = pd.read_csv('GLD_USO.csv',index_col = 0)
 lookback = 20
 
+#print(df)
 
 #ESTRATEGIA PARA EL SPREAD DE LOS PRECIOS
 
@@ -31,7 +32,9 @@ for i in range(lookback,len(df)):
 # SE CALCULAN LOS SPREADS
 AA = sm.add_constant(-hedgeratio, prepend = False)
 yport = AA*df
+
 yport = np.sum(yport,1)
+
 
 plt.figure()
 yport.plot(x = 'timestamp', y = yport.values)
@@ -98,10 +101,13 @@ AA = sm.add_constant(-hedgeratio, prepend = False)
 yport = AA*df.apply(log)
 yport = np.sum(yport,1)
 hedgeratio[0:20] = np.zeros((20,1))
+print('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
+print(hedgeratio)
 yport[0:20] = np.zeros(20)
 s = (lookback,2)
 df.values[0:20,:] = np.zeros(s)
-
+print('***************************************************************************')
+print(yport)
 plt.figure()
 yport.plot(x = 'timestamp', y = yport.values)
 plt.title(''' Spread = USO-hedgeratio*GLD (usando logaritmo) \n''') 
@@ -115,9 +121,9 @@ moving_std = yport.rolling(lookback).std()
 z_score = (yport - moving_mean) / moving_std
 numunits = pd.DataFrame(z_score * -1, columns=['numunits'])
 
-
 # SE CALCULA EL NUMERO DE UNIDADES INVERTIDAS EN DOLARES
 df1 = pd.read_csv('GLD_USO.csv',index_col = 0)
+
 s = (1500,2)
 df1.values[:,:] = np.ones(s)
 
@@ -127,6 +133,7 @@ position = sm.add_constant(-hedgeratio, prepend = False)*repmat(numunits,1,2)*df
 pnl = (position.shift(1)*df.diff(1))/df.shift(1)
 pnl = pnl.fillna(value = 0)
 pnl = np.sum(pnl,1)
+
 
 # SE CALCULA EL VALOR EN EL MERCADO
 mrk_val = position.shift(1)
@@ -176,8 +183,11 @@ z_score = (ratio - moving_mean) / moving_std
 numunits = pd.DataFrame(z_score * -1, columns=['numunits'])
 
 # SE CALCULA EL NUMERO DE UNIDADES INVERTIDAS EN DOLARES
-CC = repmat(numunits,1,2)
+CC = np.tile(numunits, (1,2))
+print(CC)
+print(df1)
 df1['USO'] = -np.ones(len(df))
+print(df1)
 position = -CC*df1
 
 # SE CALCULAN LAS UTILIDADES Y PERDIDAS DIARIAS
